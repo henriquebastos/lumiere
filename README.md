@@ -18,10 +18,10 @@ stays a working HyperFrames project with Lumiere removed.
 
 Lumiere is a library and a CLI, installed once per machine as a uv tool. Each
 video is its own repository that uses it, the way it uses HyperFrames. The
-machine needs `uv`, `node`, and `ffmpeg`:
+machine needs `uv`, Node.js 22.13 or newer, `pnpm`, and `ffmpeg`:
 
 ```bash
-brew install uv node ffmpeg
+brew install uv node pnpm ffmpeg
 uv tool install "lumiere @ git+https://github.com/henriquebastos/lumiere.git"
 uv tool upgrade lumiere                # later, to follow the newest Lumiere
 ```
@@ -30,11 +30,12 @@ From a checkout, `uv tool install --editable <path>` makes source changes
 live. `lumiere` is then on the PATH; a video uses it only through the CLI and
 has no virtual environment of its own.
 
-Then, in a new directory for the video:
+In a new directory with no local HyperFrames dependency or existing version policy,
+use latest for initialization:
 
 ```bash
 git init
-npx hyperframes init .                 # pick the workflow that fits the video
+pnpm dlx hyperframes@latest init .      # pick the workflow that fits the video
 lumiere skills update .                # the lumiere skill, under .agents/skills/
 lumiere adopt .                        # a note in AGENTS.md: seconds here are derived
 ```
@@ -116,9 +117,21 @@ unless named.
 lumiere build .                 # anchors -> seconds, at every level
 lumiere check .                 # errors: an anchor that cannot be honoured, or stale seconds
                                 # warnings: typed seconds; a voiceover that no longer matches
-npx hyperframes check           # lint, layout, motion, contrast
-npx hyperframes render --output out/film.mp4
 ```
+
+For HyperFrames, inspect `package.json` and the project instructions. Use project scripts first.
+Choose the first applicable row for each command:
+
+| Project state | Check and render commands |
+| --- | --- |
+| Project scripts provide the commands | `pnpm run check` and `pnpm run render --output out/film.mp4` (use the project's script names) |
+| No matching script, but an installed local dependency | `pnpm exec hyperframes check` and `pnpm exec hyperframes render --output out/film.mp4` |
+| No matching script and no local dependency | `pnpm dlx hyperframes@<version> check` and `pnpm dlx hyperframes@<version> render --output out/film.mp4` |
+
+For dlx, replace `<version>` with the project's explicit version selector.
+Use `@latest` only when the project permits latest. Keep existing pins unchanged.
+If the project declares HyperFrames but it is not installed, install its locked dependencies before using `pnpm exec`.
+Do not replace a missing local installation with dlx. dlx resolves an external package and does not use the local dependency.
 
 ## Anchors
 
@@ -197,3 +210,10 @@ Tests are the specification: each says *why* the behaviour matters, not just
 what it does. `tests/test_boundary.py` keeps the package from naming a video, a
 repository root, or a `.env` file. To develop Lumiere beside a video, install
 the checkout as the tool: `uv tool install --editable .` from this directory.
+
+### pnpm migration validation
+
+The migration passed all 313 tests with `uv run pytest -q`.
+`tests/test_skills_command.py` checks the packaged instructions and installed skill copies.
+The tests guard script preference, local CLI selection, explicit external selectors, and preservation of the project's version policy.
+These instruction checks do not certify rendering or install global tools.

@@ -86,9 +86,9 @@ a words file, and expect a re-spoken part to spell a name differently
 
 ## Review
 
-`npx hyperframes preview` opens the board. `lumiere feedback .` reads what was
-submitted, and `--ack` clears it once the revision is done. See
-`references/driving-studio.md`.
+Before opening the board, follow the command selection in
+[Driving Studio](driving-studio.md) to preserve the project's HyperFrames version.
+`lumiere feedback .` reads submitted comments, and `--ack` clears them once the revision is done.
 
 ## Generated narration
 

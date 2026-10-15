@@ -1,11 +1,11 @@
 """`lumiere skills` - install Lumiere's Agent Skills into a video project.
 
 Skills belong to the video, not to the machine: an agent working in a project
-finds them under `<project>/.agents/skills/`, next to the HyperFrames skills
-that `npx hyperframes skills update` puts there. Lumiere ships its skills
-inside the package, so `lumiere skills update` always installs the skills of
-the Lumiere that is installed, and a project upgraded to a newer Lumiere
-refreshes its skills the same way.
+finds them under `<project>/.agents/skills/`, next to the project's HyperFrames
+skills. The packaged guide explains how to select the project's HyperFrames CLI.
+Lumiere ships its skills inside the package, so `lumiere skills update`
+always installs the skills of the installed Lumiere version. A project
+upgraded to a newer Lumiere refreshes its skills the same way.
 """
 
 from __future__ import annotations

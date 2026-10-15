@@ -5,10 +5,19 @@ check its own work. It is a local server and a browser — nothing more.
 
 ## Open it
 
-```bash
-cd <project>
-npx hyperframes preview          # http://localhost:3000
-```
+From the project directory, inspect `package.json` and the project instructions.
+Use project scripts first. Choose the first applicable row:
+
+| Project state | Preview command |
+| --- | --- |
+| A project script opens Studio | `pnpm run dev` (use the project's preview script name) |
+| No preview script, but an installed local dependency | `pnpm exec hyperframes preview` |
+| No preview script and no local dependency | `pnpm dlx hyperframes@<version> preview` |
+
+For dlx, replace `<version>` with the project's explicit version selector.
+Use `@latest` only when the project permits latest. Keep existing pins unchanged.
+If HyperFrames is declared but not installed, install the project's locked dependencies before using `pnpm exec`.
+Do not replace a missing local installation with dlx. dlx resolves an external package and does not use the local dependency.
 
 It watches the project and refreshes as files change, so an agent editing
 compositions is visible immediately. That is the whole of the agent → producer
@@ -17,7 +26,7 @@ direction; it needs no wiring.
 ## Drive it
 
 ```bash
-npm i -g agent-browser           # once
+pnpm add -g agent-browser           # once
 agent-browser open http://localhost:3000
 agent-browser snapshot -i        # refs are assigned fresh on every snapshot
 agent-browser click @e7          # the Storyboard tab

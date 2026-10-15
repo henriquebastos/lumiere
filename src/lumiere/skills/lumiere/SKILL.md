@@ -101,8 +101,26 @@ prose.
 lumiere build .      # anchors -> seconds, every level
 lumiere check .      # errors: an anchor that cannot be honoured, or stale seconds
                      # warnings: typed seconds; a voiceover that no longer matches its words
-npx hyperframes check && npx hyperframes render --output out/film.mp4
 ```
+
+### Select the HyperFrames CLI
+
+Inspect `package.json` and the project instructions. Use project scripts first.
+Choose the first applicable row for each HyperFrames command:
+
+| Project state | Invocation |
+| --- | --- |
+| A project script provides the command | `pnpm run <script>` with the project's script name, such as `check` or `render` |
+| No matching script, but an installed local dependency | `pnpm exec hyperframes <command>` |
+| No matching script and no local dependency | `pnpm dlx hyperframes@<version> <command>` |
+
+For dlx, replace `<version>` with the project's explicit version selector.
+Use `@latest` only when the project permits latest. Keep existing pins unchanged.
+If HyperFrames is declared but not installed, install the project's locked dependencies before using `pnpm exec`.
+Do not replace a missing local installation with dlx. dlx resolves an external package and does not use the local dependency.
+
+After selecting the invocation, run `check`, then `render --output out/film.mp4`.
+Use this selection for `preview` and `skills update` too.
 
 `build` stops when a cue names a word its narration lacks, naming the file.
 That is the design working: re-cue it, or remake the narration.
@@ -150,26 +168,31 @@ its parts or its pauses instead. `check` reports the project as stale until
 A tween added in Studio has no cue: `check` warns that it will not move with
 the audio. Add `// @lumiere …` when it should.
 
-`npx hyperframes preview` opens Studio; `agent-browser` drives it. See
-`references/driving-studio.md`. Submitted comments arrive via
+Open Studio with the project's preview script or selected HyperFrames CLI.
+Before launching, follow the command selection in `references/driving-studio.md`.
+`agent-browser` drives Studio. Submitted comments arrive via
 `lumiere feedback .`, and `--ack` clears them once the revision is done.
 
 ## Set up
 
 Lumiere is a uv tool, installed once per machine; a video has no Python of
-its own. Skills belong to the video.
+its own. Skills belong to the video. HyperFrames commands require pnpm and
+Node.js 22.13 or newer.
+
+This example starts a new project with no local HyperFrames dependency or existing version policy.
+It uses latest for initialization. For an existing project, select the CLI as described above.
 
 ```bash
-brew install uv node ffmpeg
+brew install uv node pnpm ffmpeg
 uv tool install "lumiere @ git+https://github.com/henriquebastos/lumiere.git"   # or --editable <checkout>
 mkdir <slug> && cd <slug> && git init
-npx hyperframes init .                 # the producer picks the workflow
+pnpm dlx hyperframes@latest init .      # the producer picks the workflow
 lumiere skills update .                # this skill, under .agents/skills/lumiere/
 lumiere adopt .                        # a note in AGENTS.md: seconds here are derived
 ```
 
-`npx hyperframes skills update` installs HyperFrames' skills into the home
-directory; copy the HyperFrames skill set into `.agents/skills/` instead.
+Run `skills update` through the HyperFrames CLI selected above.
+If it installs skills into the home directory, copy the HyperFrames skill set into `.agents/skills/` instead.
 Write the agent instructions in `AGENTS.md` only; do not add a `CLAUDE.md`.
 
 `speak` and `transcribe` call ElevenLabs. They read
