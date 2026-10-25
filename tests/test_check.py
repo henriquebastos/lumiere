@@ -95,6 +95,32 @@ def test_a_hand_written_position_inside_a_frame_is_a_warning(tmp_path):
     assert not any(",0)" in warning for warning in report.warnings)  # the frame's start
 
 
+def test_a_hand_written_position_after_a_space_is_a_warning_too(tmp_path):
+    project = write_project(
+        tmp_path,
+        '<div id="stage" data-composition-id="main" data-lumiere-words="timeline.json" data-lumiere-start="film:start" data-lumiere-end="film:end">\n'
+        '  <div class="clip" data-composition-id="f1"\n'
+        '       data-composition-src="frames/f1.html"\n'
+        '       data-lumiere-start="word:bravo" data-lumiere-end="word:charlie.end"></div>\n'
+        "</div>\n",
+    )
+    frame = project / "frames" / "f1.html"
+    frame.parent.mkdir()
+    frame.write_text(
+        '<script>\n'
+        '  tl.fromTo("#t1", {opacity:0}, {opacity:1, duration:0.5}, 4.147);\n'
+        '  tl.to("#t2", {opacity:0, duration:0.5}, 9.999);  // @lumiere word:charlie\n'
+        "</script>\n"
+    )
+    build(project)
+
+    report = check(project)
+
+    assert report.ok, report.errors
+    assert any("4.147" in warning for warning in report.warnings)
+    assert not any("1.500" in warning for warning in report.warnings)
+
+
 def test_the_report_names_an_element_by_whatever_handle_it_actually_has(tmp_path):
     project = write_project(
         tmp_path,

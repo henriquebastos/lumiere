@@ -65,6 +65,14 @@ def speech_speed(text: str) -> float:
     return value
 
 
+def speech_model(text: str) -> str:
+    """A provider model id, such as `--model eleven_v3`."""
+    model = text.strip()
+    if not model or any(character.isspace() for character in model):
+        raise ArgumentTypeError(f"{text!r}: a model is one provider model id")
+    return model
+
+
 def lufs(text: str) -> float:
     """A loudness in LUFS, such as `--loudness -22.85`."""
     return _number(text, "LUFS")

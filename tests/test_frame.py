@@ -41,6 +41,16 @@ def test_a_longer_narration_before_the_word_moves_the_motion_with_it():
     assert ",4.500);" in patch_cues(TWEEN, after, frame_start=0.0)
 
 
+def test_a_space_before_the_position_still_carries_the_cue(simple):
+    """Formatters put a space after a comma. The cue must not depend on it:
+    a skipped cue leaves a stale number in the file and no error anywhere."""
+    tween = '  tl.add(K.rise("#t1"), 9.999);  // @lumiere word:charlie\n'
+
+    patched = patch_cues(tween, simple, frame_start=1.5)
+
+    assert patched == '  tl.add(K.rise("#t1"), 1.500);  // @lumiere word:charlie\n'
+
+
 def test_an_exit_can_be_cued_to_the_frames_own_end(simple):
     """Not every position is a sync point.
 

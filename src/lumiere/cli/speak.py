@@ -28,7 +28,7 @@ from typing import Any, Callable
 
 from lumiere.adapters.elevenlabs import TTS_MODEL, VOICE_SETTINGS, speech_request
 from lumiere.cli.conventions import opened, read_recipe, recipe_path
-from lumiere.core.lexicon import apply_lexicon
+from lumiere.core.lexicon import apply_lexicon, used_entries
 from lumiere.core.pace import RATE
 
 REQUEST = "request"
@@ -53,6 +53,7 @@ def speak(
     speed: float | None = None,
     force: bool = False,
     synthesizer: Synthesizer | None = None,
+    model: str = TTS_MODEL,
 ) -> bool:
     """Write `output` and `output.json`; False when the companion already
     records the same text, voice, and settings and nothing was requested.
@@ -60,9 +61,11 @@ def speak(
     Raises ValueError, before any request, when `output` exists and its
     companion is malformed or records no request, unless `force`.
     """
-    lexicon = dict(lexicon or {})
+    # Only the entries this text uses: one lexicon serves every part, and an
+    # entry for a word not spoken here cannot change this audio.
+    lexicon = used_entries(text, dict(lexicon or {}))
     settings = {
-        "model": TTS_MODEL,
+        "model": model,
         "voice_settings": VOICE_SETTINGS,
         "speed": speed,
         "lexicon": lexicon,
@@ -70,13 +73,13 @@ def speak(
         "next_text": next_text,
     }
     request = speech_request(
-        apply_lexicon(text, lexicon), previous_text, next_text, speed, TTS_MODEL
+        apply_lexicon(text, lexicon), previous_text, next_text, speed, model
     )
     made = {"text": text, "voice": voice, "settings": settings, REQUEST: request}
 
     if output.exists() and not force:
         recorded = _recorded(output)
-        if {key: recorded.get(key) for key in made} == made:
+        if _comparable(recorded, text) == made:
             return False
 
     audio = (synthesizer or _default_synthesizer)(request, voice)
@@ -85,6 +88,17 @@ def speak(
     with opened(recipe_path(output)) as stream:
         stream.write(json.dumps(companion, indent=2, ensure_ascii=False) + "\n")
     return True
+
+
+def _comparable(recorded: dict[str, Any], text: str) -> dict[str, Any]:
+    """The recorded keys of `made`, with the recorded lexicon cut to the
+    entries this text uses. A companion written when the whole lexicon was
+    recorded then still matches, and nothing is spoken again."""
+    comparable = {key: recorded.get(key) for key in ("text", "voice", "settings", REQUEST)}
+    settings = comparable["settings"]
+    if isinstance(settings, dict) and isinstance(settings.get("lexicon"), dict):
+        comparable["settings"] = {**settings, "lexicon": used_entries(text, settings["lexicon"])}
+    return comparable
 
 
 def _recorded(output: Path) -> dict[str, Any]:

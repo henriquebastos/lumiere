@@ -53,6 +53,16 @@ def test_a_moved_position_becomes_offset_on_its_cue():
     assert [str(c) for c in changes] == ["#a: word:bravo#1 -> word:bravo+0.480"]
 
 
+def test_a_moved_position_after_a_space_becomes_offset_on_its_cue():
+    disk = 'tl.add(K.rise("#a"), 1.980); // @lumiere word:bravo\n'
+    derived = 'tl.add(K.rise("#a"), 1.500); // @lumiere word:bravo\n'
+
+    text, changes = absorb_frame(disk, derived)
+
+    assert text == 'tl.add(K.rise("#a"), 1.980); // @lumiere word:bravo+0.480\n'
+    assert [str(c) for c in changes] == ["#a: word:bravo -> word:bravo+0.480"]
+
+
 def test_cues_that_do_not_line_up_are_refused():
     with pytest.raises(ValueError, match="do not line up"):
         absorb_frame('tl.to("#a",{},1); // @lumiere word:bravo\n', 'tl.to("#a",{},1); // @lumiere word:charlie\n')

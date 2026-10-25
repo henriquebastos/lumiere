@@ -24,7 +24,9 @@ CUE = "@lumiere"
 # `// @lumiere <anchor>` is the authored truth, the number in front of it is
 # regenerated from it.
 CUED_CALL = re.compile(
-    r"(?P<head>tl\.\w+\([^;\n]*,)"
+    # The head keeps any space after the comma, so a formatted call is cued
+    # and rewritten as written.
+    r"(?P<head>tl\.\w+\([^;\n]*,\s*)"
     r"(?P<position>-?\d+(?:\.\d+)?)"
     rf"(?P<tail>\);\s*//\s*{CUE}\s+)"
     # Stops at markup: a cue is usually last on its line, but not always, and

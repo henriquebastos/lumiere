@@ -15,7 +15,7 @@ from typing import NoReturn
 
 import requests
 
-from lumiere.adapters.elevenlabs import MissingApiKey, voice_from_env
+from lumiere.adapters.elevenlabs import TTS_MODEL, MissingApiKey, voice_from_env
 from lumiere.cli.build import build, build_composition
 from lumiere.cli.check import check
 from lumiere.cli.feedback import acknowledge, pending, wait_for
@@ -34,6 +34,7 @@ from lumiere.cli.conventions import (
     pace_target,
     seconds,
     span,
+    speech_model,
     speech_speed,
     read_text,
     write_json_line,
@@ -149,6 +150,10 @@ def _run(argv: list[str] | None) -> int:
         "--lexicon", type=Path,
         help="a JSON object of word -> respelling, applied to the request only "
              "(default: none)",
+    )
+    speak_command.add_argument(
+        "--model", type=speech_model, default=TTS_MODEL,
+        help=f"ElevenLabs model id (default: {TTS_MODEL})",
     )
     speak_command.add_argument(
         "--speed", type=speech_speed,
@@ -345,7 +350,7 @@ def _run(argv: list[str] | None) -> int:
                 text, args.output, voice,
                 previous_text=given(args.previous, args.previous_file),
                 next_text=given(args.next, args.next_file),
-                lexicon=lexicon, speed=args.speed, force=args.force,
+                lexicon=lexicon, speed=args.speed, force=args.force, model=args.model,
             )
         except ValueError as bad_input:
             # Empty or undecodable text, a malformed lexicon or companion,

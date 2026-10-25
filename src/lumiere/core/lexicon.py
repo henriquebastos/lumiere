@@ -36,7 +36,26 @@ def apply_lexicon(text: str, lexicon: dict[str, str]) -> str:
     contains it.
     """
     for word, respelling in lexicon.items():
-        text = re.sub(
-            rf"(?<!\w){re.escape(word)}(?!\w)", respelling.replace("\\", r"\\"), text
-        )
+        text = _respell(text, word, respelling)
     return text
+
+
+def used_entries(text: str, lexicon: dict[str, str]) -> dict[str, str]:
+    """The entries that change `text`, in the order `apply_lexicon` applies them.
+
+    Applying only these gives the same request as applying the whole lexicon:
+    an entry left out changed nothing at its turn.
+    """
+    used: dict[str, str] = {}
+    for word, respelling in lexicon.items():
+        respelled = _respell(text, word, respelling)
+        if respelled != text:
+            used[word] = respelling
+            text = respelled
+    return used
+
+
+def _respell(text: str, word: str, respelling: str) -> str:
+    return re.sub(
+        rf"(?<!\w){re.escape(word)}(?!\w)", respelling.replace("\\", r"\\"), text
+    )

@@ -109,7 +109,10 @@ lumiere build . && lumiere check .
 match; `verify` turns thresholds into an exit code. Respellings for names the
 voice gets wrong go in a JSON file named with `speak --lexicon`; syllable
 counts the dictionary lacks in one named with `--syllables`. Nothing is read
-unless named.
+unless named. One lexicon can serve every part: a part's companion records
+only the entries its text uses, so a new entry respeaks only the parts that
+say that word. `speak --model` picks the ElevenLabs model
+(default: `eleven_multilingual_v2`).
 
 ## The loop
 

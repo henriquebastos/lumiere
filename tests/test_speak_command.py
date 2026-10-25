@@ -141,7 +141,8 @@ def test_the_same_text_and_settings_make_no_second_request(here, provider, capsy
     ["Hello.", "-o", "a.wav", "--voice", VOICE, "--next", "After."],
     ["Hello.", "-o", "a.wav", "--voice", VOICE, "--lexicon", "lexicon.json"],
     ["Hello.", "-o", "a.wav", "--voice", VOICE, "--force"],
-], ids=["text", "voice", "speed", "previous", "next", "lexicon", "force"])
+    ["Hello.", "-o", "a.wav", "--voice", VOICE, "--model", "eleven_v3"],
+], ids=["text", "voice", "speed", "previous", "next", "lexicon", "force", "model"])
 def test_a_changed_text_or_setting_or_force_speaks_again(here, provider, changed):
     (here / "lexicon.json").write_text(json.dumps({"Hello": "Heh-low"}))
     assert main(["speak", "Hello.", "-o", "a.wav", "--voice", VOICE]) == 0
@@ -201,6 +202,45 @@ def test_the_lexicon_respells_the_request_and_the_text_keeps_the_true_spelling(h
     made = companion(here / "a.wav")
     assert made["text"] == "Henrique wrote it. Henriques too."
     assert made["settings"]["lexicon"] == {"Henrique": "En-hee-kee"}
+
+
+def test_only_the_lexicon_entries_the_text_uses_are_recorded(here, provider):
+    """One lexicon serves every part. An entry for a word this text does not
+    say cannot change its audio, so adding one must not speak the part again."""
+    (here / "lexicon.json").write_text(json.dumps({"Henrique": "En-hee-kee"}))
+    arguments = ["speak", "Henrique wrote it.", "-o", "a.wav", "--voice", VOICE,
+                 "--lexicon", "lexicon.json"]
+    assert main(arguments) == 0
+
+    (here / "lexicon.json").write_text(json.dumps({"Henrique": "En-hee-kee", "Lumiere": "Loo-myair"}))
+    assert main(arguments) == 0
+
+    assert len(provider.requests) == 1
+    assert companion(here / "a.wav")["settings"]["lexicon"] == {"Henrique": "En-hee-kee"}
+
+
+def test_a_companion_that_recorded_the_whole_lexicon_still_matches(here, provider):
+    """Companions written before the change hold every entry. The entries the
+    text uses are the same, so the audio is current and nothing is requested."""
+    (here / "lexicon.json").write_text(json.dumps({"Henrique": "En-hee-kee", "Lumiere": "Loo-myair"}))
+    arguments = ["speak", "Henrique wrote it.", "-o", "a.wav", "--voice", VOICE,
+                 "--lexicon", "lexicon.json"]
+    assert main(arguments) == 0
+    path = here / "a.wav.json"
+    old = json.loads(path.read_text())
+    old["settings"]["lexicon"] = {"Henrique": "En-hee-kee", "Lumiere": "Loo-myair"}
+    path.write_text(json.dumps(old))
+
+    assert main(arguments) == 0
+
+    assert len(provider.requests) == 1
+
+
+def test_the_model_is_chosen_with_model(here, provider):
+    assert main(["speak", "Hello.", "-o", "a.wav", "--voice", VOICE, "--model", "eleven_v3"]) == 0
+
+    assert provider.requests[0][0]["model_id"] == "eleven_v3"
+    assert companion(here / "a.wav")["settings"]["model"] == "eleven_v3"
 
 
 def test_the_voice_defaults_to_the_environment(here, provider, monkeypatch):
@@ -320,6 +360,7 @@ def test_audio_speak_did_not_make_is_never_replaced_without_force(here, provider
     (["-f", "blank.txt", "-o", "a.wav", "--voice", VOICE], "empty"),
     (["-", "-o", "a.wav", "--voice", VOICE, "--next-file", "-"], "stdin"),
     (["Hello.", "-o", "a.wav", "--voice", VOICE, "--speed", "0"], "positive"),
+    (["Hello.", "-o", "a.wav", "--voice", VOICE, "--model", " "], "model"),
     (["Hello.", "-o", "a.wav", "--voice", VOICE, "--previous", "x", "--previous-file", "a.txt"],
      "not allowed with"),
 ])

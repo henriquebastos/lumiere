@@ -58,7 +58,7 @@ def _describe(tag: str) -> str:
 
 # A GSAP call's trailing position argument, and whether a cue follows it.
 GSAP_POSITION = re.compile(
-    r"tl\.\w+\([^;\n]*,(?P<position>-?\d+(?:\.\d+)?)\);(?P<trailer>[^\n]*)"
+    r"tl\.\w+\([^;\n]*,\s*(?P<position>-?\d+(?:\.\d+)?)\);(?P<trailer>[^\n]*)"
 )
 
 

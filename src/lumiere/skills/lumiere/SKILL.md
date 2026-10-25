@@ -91,7 +91,10 @@ lumiere build . && lumiere check .
 
 Respellings for names the voice gets wrong go in a JSON file named with
 `--lexicon`; syllable counts the dictionary lacks in one named with
-`--syllables`. Lumiere reads neither unless named. A video's `package.json`
+`--syllables`. Lumiere reads neither unless named. One lexicon can serve
+every part: a part's companion records only the entries its text uses, so a
+new entry respeaks only the parts that say that word. `speak --model` picks
+the ElevenLabs model (default: `eleven_multilingual_v2`). A video's `package.json`
 is the place for its file names and thresholds; keep them there, not in
 prose.
 
