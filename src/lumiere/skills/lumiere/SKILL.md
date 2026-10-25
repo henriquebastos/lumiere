@@ -1,6 +1,6 @@
 ---
 name: lumiere
-description: "Derive a HyperFrames video's timing from its narration: every scene start, scene length, and gesture inside a frame resolves from a spoken word, so the picture reflows when the narration is re-recorded. Use when starting a video project with Lumiere, when a project has narration parts or words.json files, when timing or sync is wrong, when a scene's narration must be remade, or when anchors, cues, voiceovers, or lumiere commands are involved. For a video with no narration at all, use the HyperFrames workflows directly."
+description: "Derive a HyperFrames video's timing from its narration: every scene start, scene length, and gesture inside a frame resolves from a spoken word, so the picture reflows when the narration is re-recorded. Use when starting a video project with Lumiere, when a project has narration parts or words.json files, when timing or sync is wrong, when a scene's narration must be remade, or when anchors, cues, voiceovers, or lumiere commands are involved, or when a film must be watched outside Studio or shared as one HTML file. For a video with no narration at all, use the HyperFrames workflows directly."
 ---
 
 # Lumiere
@@ -181,6 +181,37 @@ Open Studio with the project's preview script or selected HyperFrames CLI.
 Before launching, follow the command selection in `references/driving-studio.md`.
 `agent-browser` drives Studio. Submitted comments arrive via
 `lumiere feedback .`, and `--ack` clears them once the revision is done.
+
+## Watch and bundle
+
+Use these to show a producer the film, or to share it, without Studio's editing tools. Both use HyperFrames' own
+bundler (`@hyperframes/core/compiler`) and player (`@hyperframes/player`), so
+the page holds the same compositions and clips at the same seconds as Studio
+and the render.
+
+```bash
+lumiere watch .                       # http://127.0.0.1:8765/ - reload after an edit, Ctrl-C stops
+lumiere bundle . -o film.html         # one file that plays anywhere, media embedded
+lumiere bundle . -o film.html --audio copy   # keep the original audio bytes
+```
+
+`watch` bundles the project again on every reload and reads media from the
+project's files. It writes nothing. `bundle` embeds every audio, video, and
+image file the film links. The file of an `<audio>` becomes Opus at 32 kbps
+unless `--audio copy` keeps it; every other file is copied. A link to a file
+that is missing or outside the project is refused, and nothing is written. The
+bundler's own notes, such as a font too large to inline, go to stderr.
+
+The HyperFrames version is the project's installed `hyperframes`, else an exact
+version in `package.json`; give `--hyperframes VERSION` when it has neither.
+Packages the project has not installed go to a temporary directory, through
+pnpm (or npm), and are deleted after the command.
+
+Known limit: when a browser blocks sound inside the player's frame, as on
+phones, the player plays the audio from the page itself. That copy starts the
+audio of a nested scene at the film's start, so scenes after the first can be
+silent. Desktop Chrome plays the frame's own audio and is not affected. The fix
+belongs in `@hyperframes/player`.
 
 ## Set up
 

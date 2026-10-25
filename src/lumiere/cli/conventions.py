@@ -76,6 +76,17 @@ def count(text: str) -> int:
     return value
 
 
+def port_number(text: str) -> int:
+    """A TCP port, 0 to 65535; 0 lets the system pick a free one."""
+    try:
+        port = int(text)
+    except ValueError:
+        port = -1
+    if not 0 <= port <= 65535:
+        raise ArgumentTypeError(f"{text!r}: give a port from 0 to 65535")
+    return port
+
+
 def speech_model(text: str) -> str:
     """A provider model id, such as `--model eleven_v3`."""
     model = text.strip()

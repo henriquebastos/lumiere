@@ -14,6 +14,9 @@ seconds. Everything Lumiere adds to a composition is namespaced
 (`data-lumiere-*`, `// @lumiere`) so HyperFrames ignores it, and a project
 stays a working HyperFrames project with Lumiere removed.
 
+`lumiere watch` and `lumiere bundle` play the finished film outside Studio:
+served from the project, or as one HTML file with its media embedded.
+
 ## Install
 
 Lumiere is a library and a CLI, installed once per machine as a uv tool. Each
@@ -193,6 +196,37 @@ lumiere feedback . --wait     # block until something is submitted
 lumiere feedback . --ack      # delete the batch once the work is done
 ```
 
+## Watch and bundle
+
+Play the film outside Studio, with no editing tools. Both use HyperFrames' own
+bundler (`@hyperframes/core/compiler`) and player (`@hyperframes/player`), so
+the page holds the same compositions and clips at the same seconds as Studio
+and the render.
+
+```bash
+lumiere watch .                       # http://127.0.0.1:8765/ - reload after an edit, Ctrl-C stops
+lumiere bundle . -o film.html         # one file that plays anywhere, media embedded
+lumiere bundle . -o film.html --audio copy   # keep the original audio bytes
+```
+
+`watch` bundles the project again on every reload and reads media from the
+project's files. It writes nothing. `bundle` embeds every audio, video, and
+image file the film links. The file of an `<audio>` becomes Opus at 32 kbps
+unless `--audio copy` keeps it; every other file is copied. A link to a file
+that is missing or outside the project is refused, and nothing is written. The
+bundler's own notes, such as a font too large to inline, go to stderr.
+
+The HyperFrames version is the project's installed `hyperframes`, else an exact
+version in `package.json`; give `--hyperframes VERSION` when it has neither.
+Packages the project has not installed go to a temporary directory, through
+pnpm (or npm), and are deleted after the command.
+
+Known limit: when a browser blocks sound inside the player's frame, as on
+phones, the player plays the audio from the page itself. That copy starts the
+audio of a nested scene at the film's start, so scenes after the first can be
+silent. Desktop Chrome plays the frame's own audio and is not affected. The fix
+belongs in `@hyperframes/player`.
+
 ## A project
 
 ```text
@@ -211,8 +245,9 @@ lumiere feedback . --ack      # delete the batch once the work is done
 `speak`, `transcribe`, and `voices` call ElevenLabs. They read
 `ELEVENLABS_API_KEY`, and `speak` without `--voice` reads `ELEVENLABS_VOICE_ID`,
 from the environment only, and refuse in one line when a variable is missing. Supply them from your shell
-(direnv, a secrets manager, CI); Lumiere reads no `.env` file. Nothing else
-needs the network.
+(direnv, a secrets manager, CI); Lumiere reads no `.env` file. `watch` and
+`bundle` reach the network only to install HyperFrames packages the project has
+not installed. Nothing else needs the network.
 
 ## Working on Lumiere itself
 

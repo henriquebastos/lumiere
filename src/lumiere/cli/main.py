@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -16,7 +18,9 @@ from typing import NoReturn
 import requests
 
 from lumiere.adapters.elevenlabs import TTS_MODEL, MissingApiKey, voice_from_env
+from lumiere.adapters.hyperframes import MissingTool, ToolFailed, toolchain
 from lumiere.cli.build import build, build_composition
+from lumiere.cli.bundle import AUDIO_ENCODINGS, MissingMedia, bundle, watch_server
 from lumiere.cli.check import check
 from lumiere.cli.feedback import acknowledge, pending, wait_for
 from lumiere.cli.absorb import absorb
@@ -29,6 +33,7 @@ from lumiere.cli.conventions import (
     EXIT_USAGE,
     count,
     dbtp,
+    port_number,
     lufs,
     match_threshold,
     opened,
@@ -336,6 +341,34 @@ def _run(argv: list[str] | None) -> int:
     voices_add.add_argument("voice_id", help="the voice_id that `voices list --library` printed")
     voices_add.add_argument("--name", required=True, help="the voice's name in the account")
 
+    bundle_command = commands.add_parser(
+        "bundle",
+        help="write the film as one HTML file that plays anywhere: HyperFrames' bundle "
+             "of the project, every media file embedded, in the HyperFrames player",
+    )
+    watch_command = commands.add_parser(
+        "watch",
+        help="serve the film as the project is now, on this machine; "
+             "each reload bundles it again (Ctrl-C stops)",
+    )
+    for command in (bundle_command, watch_command):
+        command.add_argument("project", nargs="?", default=".", help="project directory")
+        command.add_argument(
+            "--hyperframes", metavar="VERSION",
+            help="the HyperFrames version to bundle with, such as 0.8.179 "
+                 "(default: the project's installed or exactly pinned hyperframes)",
+        )
+    bundle_command.add_argument("-o", "--output", type=Path, required=True, help="the HTML file to write")
+    bundle_command.add_argument(
+        "--audio", choices=sorted(AUDIO_ENCODINGS), default="opus32",
+        help="opus32 encodes each audio file as Opus at 32 kbps; copy embeds the original bytes "
+             "(default: opus32). Video and images are always copied",
+    )
+    watch_command.add_argument(
+        "--port", type=port_number, default=8765,
+        help="the local port; 0 picks a free one (default: 8765)",
+    )
+
     skills_command = commands.add_parser(
         "skills", help="install Lumiere's Agent Skills into a video project",
     )
@@ -346,6 +379,9 @@ def _run(argv: list[str] | None) -> int:
     skills_update.add_argument("project", nargs="?", default=".", help="project directory")
 
     args = parser.parse_args(argv)
+
+    if args.command in ("bundle", "watch"):
+        return _play(args, bundle_command if args.command == "bundle" else watch_command)
 
     if args.command == "skills":
         try:
@@ -676,6 +712,55 @@ def _run(argv: list[str] | None) -> int:
     for path in report.patched:
         print(f"patched {path}")
     return 0
+
+
+def _interrupt(signum: int, frame: object) -> NoReturn:
+    raise KeyboardInterrupt
+
+
+def _play(args: argparse.Namespace, command: argparse.ArgumentParser) -> int:
+    """`bundle` and `watch`: missing tools are bad input; a tool that ran and failed is exit 1."""
+    project = Path(args.project)
+    if not project.is_dir():
+        command.error(f"{project}: no such project directory")
+    if args.command == "bundle" and not args.output.parent.is_dir():
+        command.error(f"{args.output}: no such directory {args.output.parent}")
+    if args.command == "bundle" and args.output.is_dir():
+        command.error(f"{args.output}: a directory, not a file to write")
+    if args.command == "bundle" and AUDIO_ENCODINGS[args.audio] and shutil.which("ffmpeg") is None:
+        _refuse_in_one_line(command, "ffmpeg: not on the PATH; --audio opus32 encodes with it "
+                                     "(--audio copy does not)")
+    try:
+        with toolchain(project, args.hyperframes) as chain:
+            if args.command == "bundle":
+                report = bundle(project, args.output, chain, args.audio)
+                for link, size in report.embedded.items():
+                    print(f"embedded {link} ({size:,} bytes)")
+                print(f"{report.output} ({report.size:,} bytes)")
+                return EXIT_OK
+            try:
+                server = watch_server(project, chain, args.port)
+            except OSError as busy:
+                _refuse_in_one_line(command, f"port {args.port}: {_one_line(busy)}")
+            host, port = server.server_address[:2]
+            print(f"watching {project} at http://{host}:{port}/ - reload to see edits, Ctrl-C stops",
+                  flush=True)
+            # A kill or a closed terminal stops it like Ctrl-C, so the
+            # temporary packages are removed on the way out.
+            for stop in (signal.SIGTERM, signal.SIGHUP):
+                signal.signal(stop, _interrupt)
+            try:
+                server.serve_forever()
+            except KeyboardInterrupt:
+                pass
+            finally:
+                server.server_close()
+            return EXIT_OK
+    except MissingTool as missing:
+        _refuse_in_one_line(command, _one_line(missing))
+    except (ToolFailed, MissingMedia) as failed:
+        print(_one_line(failed), file=sys.stderr)
+        return EXIT_CHECK_FAILED
 
 
 def main(argv: list[str] | None = None) -> int:
