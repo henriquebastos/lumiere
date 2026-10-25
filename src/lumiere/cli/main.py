@@ -27,6 +27,7 @@ from lumiere.cli.conventions import (
     EXIT_CHECK_FAILED,
     EXIT_OK,
     EXIT_USAGE,
+    count,
     dbtp,
     lufs,
     match_threshold,
@@ -44,6 +45,7 @@ from lumiere.cli.conventions import (
 from lumiere.cli.join import join as join_parts, parts_from_arguments, parts_from_sequence
 from lumiere.cli.measure import audio_paths, measure, overrides_from, summarize, text_for
 from lumiere.cli.speak import speak
+from lumiere.cli.voices import LABELS, add_voice, list_voices
 from lumiere.core.lexicon import load_lexicon
 from lumiere.cli.transcribe import transcribe_file
 from lumiere.core.adjust import Refusal
@@ -295,6 +297,45 @@ def _run(argv: list[str] | None) -> int:
         help="the joined word timings; `-` prints them (default: out.words.json beside -o)",
     )
 
+    voices_command = commands.add_parser(
+        "voices",
+        help="list the voices that could speak, one JSON line each, "
+             "or save a library voice to the account",
+    )
+    voices_actions = voices_command.add_subparsers(dest="action", required=True)
+    voices_list = voices_actions.add_parser(
+        "list",
+        help="the account's voices; with --library, a search of the ElevenLabs voice library",
+    )
+    voices_list.add_argument(
+        "--library", action="store_true",
+        help="search the voice library instead of the account; a voice found there "
+             "needs `voices add` before speak can use it",
+    )
+    voices_list.add_argument(
+        "--search", metavar="WORDS",
+        help="words such as 'calm narration': in the account, each must occur in the name, "
+             "description, or labels; in the library, the provider's own search",
+    )
+    for label in LABELS:
+        voices_list.add_argument(
+            f"--{label.replace('_', '-')}", dest=label, metavar="LABEL",
+            help=f"only voices whose {label.replace('_', ' ')} label is this, such as "
+                 + {"gender": "male", "accent": "american", "age": "middle_aged",
+                    "descriptive": "calm", "use_case": "informative_educational",
+                    "language": "en"}[label],
+        )
+    voices_list.add_argument(
+        "--limit", type=count, default=30,
+        help="at most this many lines; the library gives at most 100 (default: 30)",
+    )
+    voices_add = voices_actions.add_parser(
+        "add", help="save a library voice to the account, so speak --voice can use it",
+    )
+    voices_add.add_argument("owner_id", help="the owner_id that `voices list --library` printed")
+    voices_add.add_argument("voice_id", help="the voice_id that `voices list --library` printed")
+    voices_add.add_argument("--name", required=True, help="the voice's name in the account")
+
     skills_command = commands.add_parser(
         "skills", help="install Lumiere's Agent Skills into a video project",
     )
@@ -314,6 +355,33 @@ def _run(argv: list[str] | None) -> int:
         for name in report.installed:
             print(f"installed {SKILLS_ROOT}/{name}")
         return 0
+
+    if args.command == "voices":
+        command = voices_list if args.action == "list" else voices_add
+        try:
+            if args.action == "list":
+                records = list_voices(
+                    args.library, args.search,
+                    {label: getattr(args, label) for label in LABELS if getattr(args, label)},
+                    args.limit,
+                )
+            else:
+                added = add_voice(args.owner_id, args.voice_id, args.name)
+        except MissingApiKey as missing:
+            _refuse_in_one_line(command, _one_line(missing))
+        except PROVIDER_FAILURES as failed:
+            # The request was made and failed: exit 1, nothing printed on stdout.
+            print(f"lumiere voices {args.action}: the provider request failed: {_one_line(failed)}",
+                  file=sys.stderr)
+            return EXIT_CHECK_FAILED
+        if args.action == "add":
+            print(added)
+            return EXIT_OK
+        for record in records:
+            write_json_line(record)
+        if not records:
+            print("no voice matches", file=sys.stderr)
+        return EXIT_OK
 
     if args.command == "speak":
         if (args.text is None) == (args.text_file is None):

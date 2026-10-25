@@ -114,6 +114,18 @@ only the entries its text uses, so a new entry respeaks only the parts that
 say that word. `speak --model` picks the ElevenLabs model
 (default: `eleven_multilingual_v2`).
 
+`speak --voice` picks the voice (default: `ELEVENLABS_VOICE_ID`). `voices
+list` prints the account's voices, one JSON line each, with the labels a
+caster compares: gender, accent, age, descriptive, use case, language, a
+description, and a preview link. `--library` searches the ElevenLabs voice
+library instead, and `voices add OWNER VOICE --name NAME` saves a library voice
+to the account so `speak --voice` can use it. Listing and adding cost nothing.
+
+```bash
+lumiere voices list --use-case informative_educational --descriptive calm
+lumiere voices list --library --search "calm narration" --language en --limit 10
+```
+
 ## The loop
 
 ```bash
@@ -196,9 +208,9 @@ lumiere feedback . --ack      # delete the batch once the work is done
 
 ## Credentials
 
-`speak` and `transcribe` call ElevenLabs. They read
-`ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` from the environment only, and
-refuse in one line when a variable is missing. Supply them from your shell
+`speak`, `transcribe`, and `voices` call ElevenLabs. They read
+`ELEVENLABS_API_KEY`, and `speak` without `--voice` reads `ELEVENLABS_VOICE_ID`,
+from the environment only, and refuse in one line when a variable is missing. Supply them from your shell
 (direnv, a secrets manager, CI); Lumiere reads no `.env` file. Nothing else
 needs the network.
 

@@ -94,7 +94,13 @@ Respellings for names the voice gets wrong go in a JSON file named with
 `--syllables`. Lumiere reads neither unless named. One lexicon can serve
 every part: a part's companion records only the entries its text uses, so a
 new entry respeaks only the parts that say that word. `speak --model` picks
-the ElevenLabs model (default: `eleven_multilingual_v2`). A video's `package.json`
+the ElevenLabs model (default: `eleven_multilingual_v2`). `speak --voice` picks
+the voice (default: `ELEVENLABS_VOICE_ID`). `voices list` prints the account's
+voices as JSON lines with their labels, description, and preview link;
+`--library` searches the ElevenLabs voice library, filtered by `--search`,
+`--gender`, `--accent`, `--age`, `--descriptive`, `--use-case`, and `--language`.
+`voices add OWNER VOICE --name NAME` saves a library voice to the account, which
+`speak --voice` needs. Listing and adding cost nothing. A video's `package.json`
 is the place for its file names and thresholds; keep them there, not in
 prose.
 
@@ -198,6 +204,6 @@ Run `skills update` through the HyperFrames CLI selected above.
 If it installs skills into the home directory, copy the HyperFrames skill set into `.agents/skills/` instead.
 Write the agent instructions in `AGENTS.md` only; do not add a `CLAUDE.md`.
 
-`speak` and `transcribe` call ElevenLabs. They read
-`ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` from the environment only and
-refuse in one line when a variable is missing. Lumiere reads no `.env` file.
+`speak`, `transcribe`, and `voices` call ElevenLabs. They read
+`ELEVENLABS_API_KEY`, and `speak` without `--voice` reads `ELEVENLABS_VOICE_ID`,
+from the environment only and refuse in one line when a variable is missing. Lumiere reads no `.env` file.

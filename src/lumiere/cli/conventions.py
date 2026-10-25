@@ -65,6 +65,17 @@ def speech_speed(text: str) -> float:
     return value
 
 
+def count(text: str) -> int:
+    """A whole number of at least 1, such as `--limit 20`."""
+    try:
+        value = int(text)
+    except ValueError:
+        raise ArgumentTypeError(f"{text!r}: give a whole number such as 20") from None
+    if value < 1:
+        raise ArgumentTypeError(f"{text!r}: give a whole number of at least 1")
+    return value
+
+
 def speech_model(text: str) -> str:
     """A provider model id, such as `--model eleven_v3`."""
     model = text.strip()

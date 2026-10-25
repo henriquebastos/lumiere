@@ -1,4 +1,4 @@
-"""ElevenLabs Scribe as a transcription provider.
+"""ElevenLabs: Scribe for transcription, text-to-speech, and the voice catalogue.
 
 Above the seam the contract is: audio in, SourceTimeline out. Nothing outside
 this module refers to ElevenLabs, and nothing here decides what the timeline is
@@ -213,3 +213,61 @@ def post_speech(request: dict, api_key: str, voice_id: str) -> bytes:
     )
     response.raise_for_status()
     return response.content
+
+
+# -- voices ---------------------------------------------------------------
+
+VOICES_URL = "https://api.elevenlabs.io/v2/voices"
+LIBRARY_URL = "https://api.elevenlabs.io/v1/shared-voices"
+ADD_VOICE_URL = "https://api.elevenlabs.io/v1/voices/add"
+
+#: The most voices one library search returns; the provider's page limit.
+LIBRARY_PAGE_MAX = 100
+
+
+def _get_json(url: str, api_key: str, params: dict) -> dict:
+    response = requests.get(url, headers={"xi-api-key": api_key}, params=params, timeout=60)
+    if response.status_code != 200:
+        raise RuntimeError(f"ElevenLabs returned {response.status_code}: {response.text[:500]}")
+    return response.json()
+
+
+def account_voices(api_key: str) -> list[dict]:
+    """Every voice of the account, in the provider's order and shape:
+    premade, cloned, generated, and library voices saved to it."""
+    voices: list[dict] = []
+    params: dict = {"page_size": 100}
+    while True:
+        page = _get_json(VOICES_URL, api_key, params)
+        voices.extend(page.get("voices", []))
+        token = page.get("next_page_token")
+        if not page.get("has_more") or not token:
+            return voices
+        params = {"page_size": 100, "next_page_token": token}
+
+
+def library_voices(api_key: str, filters: dict[str, str], limit: int) -> list[dict]:
+    """One search of the ElevenLabs voice library, in the provider's shape.
+
+    `filters` holds any of search, gender, accent, age, language,
+    descriptive, and use_case; the provider matches them, not this module.
+    """
+    params: dict = {"page_size": min(limit, LIBRARY_PAGE_MAX)}
+    plural = {"descriptive": "descriptives", "use_case": "use_cases"}
+    for key, value in filters.items():
+        if value:
+            params[plural.get(key, key)] = value
+    return _get_json(LIBRARY_URL, api_key, params).get("voices", [])[:limit]
+
+
+def add_library_voice(api_key: str, owner_id: str, voice_id: str, name: str) -> str:
+    """Save one library voice to the account under `name`; its voice id there."""
+    response = requests.post(
+        f"{ADD_VOICE_URL}/{owner_id}/{voice_id}",
+        headers={"xi-api-key": api_key},
+        json={"new_name": name},
+        timeout=60,
+    )
+    if response.status_code != 200:
+        raise RuntimeError(f"ElevenLabs returned {response.status_code}: {response.text[:500]}")
+    return response.json().get("voice_id", voice_id)
