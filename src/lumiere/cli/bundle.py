@@ -15,6 +15,7 @@ from __future__ import annotations
 import base64
 import mimetypes
 import subprocess
+import sys
 import tempfile
 from dataclasses import dataclass, field
 from http import HTTPStatus
@@ -186,7 +187,14 @@ class _Watch(BaseHTTPRequestHandler):
                    {"Accept-Ranges": "bytes", "Content-Range": f"bytes {start}-{end}/{size}"})
 
 
+class _WatchServer(ThreadingHTTPServer):
+    def handle_error(self, request: object, client_address: tuple[str, int]) -> None:
+        # A reload or a closed tab drops its connection mid-reply: not a fault.
+        if not isinstance(sys.exception(), ConnectionError):
+            super().handle_error(request, client_address)
+
+
 def watch_server(project: Path, chain: Toolchain, port: int) -> ThreadingHTTPServer:
     """A server on this machine only that plays `project`; port 0 picks a free one."""
     handler = type("Watch", (_Watch,), {"project": project, "chain": chain})
-    return ThreadingHTTPServer(("127.0.0.1", port), handler)
+    return _WatchServer(("127.0.0.1", port), handler)

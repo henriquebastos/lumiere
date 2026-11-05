@@ -405,3 +405,21 @@ def test_watch_shows_a_bundler_failure_on_the_page(project: Path, served: str):
     (project / "index.html").write_text("BREAK")
     status, _, body = fetch(served + "/")
     assert status == 500 and b"the composition does not parse" in body
+
+
+def test_watch_stays_quiet_when_the_browser_drops_a_connection(project: Path, capsys):
+    server = watch_server(project, Toolchain(project), 0)
+    try:
+        for dropped in (BrokenPipeError(32, "Broken pipe"), ConnectionResetError(54, "reset by peer")):
+            try:
+                raise dropped
+            except ConnectionError:
+                server.handle_error(None, ("127.0.0.1", 50000))
+        assert capsys.readouterr().err == "", "a reload or a closed tab is not an error"
+        try:
+            raise ValueError("a real fault")
+        except ValueError:
+            server.handle_error(None, ("127.0.0.1", 50000))
+        assert "ValueError: a real fault" in capsys.readouterr().err, "other errors still print"
+    finally:
+        server.server_close()
