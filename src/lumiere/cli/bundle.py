@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import base64
 import mimetypes
+import os
 import subprocess
 import sys
 import tempfile
@@ -37,11 +38,21 @@ class MissingMedia(ValueError):
     """A media link names a file the project does not have."""
 
 
+def project_file(project: Path, link: str) -> Path | None:
+    """The file a link names inside `project`, or None for a link out of it.
+
+    The link must stay in the project as written. A symlink the project holds
+    may point anywhere: a project that links shared assets plays as in Studio.
+    """
+    root = project.absolute()
+    path = Path(os.path.normpath(root / unquote(urlsplit(link).path).lstrip("/")))
+    return path if path.is_relative_to(root) and path.is_file() else None
+
+
 def media_file(project: Path, link: str) -> Path:
     """The project file a media link names; a link out of the project names none."""
-    root = project.resolve()
-    path = (root / unquote(urlsplit(link).path).lstrip("/")).resolve()
-    if not path.is_relative_to(root) or not path.is_file():
+    path = project_file(project, link)
+    if path is None:
         raise MissingMedia(f"{project}: the film links {link}, which is not a file in the project")
     return path
 
@@ -152,9 +163,8 @@ class _Watch(BaseHTTPRequestHandler):
                 return
             self._send(HTTPStatus.OK, page.encode(), "text/html; charset=utf-8")
             return
-        root = self.project.resolve()
-        file = (root / path.lstrip("/")).resolve()
-        if not file.is_relative_to(root) or not file.is_file():
+        file = project_file(self.project, self.path)
+        if file is None:
             self._send(HTTPStatus.NOT_FOUND, b"not found\n", "text/plain; charset=utf-8")
             return
         self._send_file(file)

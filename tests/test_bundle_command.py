@@ -246,6 +246,18 @@ def test_a_link_out_of_the_project_is_refused(project: Path, tmp_path: Path, cap
     assert not output.exists()
 
 
+@needs_node
+def test_a_link_through_a_symlink_the_project_holds_is_embedded(project: Path, tmp_path: Path):
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    (shared / "vo.wav").write_bytes(b"SHARED-WAV")
+    (project / "assets/shared").symlink_to(shared)
+    (project / "index.html").write_text(INDEX.replace("assets/vo.wav", "assets/shared/vo.wav"))
+    output = tmp_path / "film.html"
+    assert main(["bundle", str(project), "-o", str(output), "--audio", "copy"]) == 0
+    assert data_of(film_of(output.read_text()), "vo") == ("audio/x-wav", b"SHARED-WAV")
+
+
 def test_opus_without_ffmpeg_refuses_in_one_line(project: Path, tmp_path: Path, monkeypatch, capsys):
     monkeypatch.setenv("PATH", str(tmp_path / "empty"))
     with pytest.raises(SystemExit) as exit:
@@ -398,6 +410,16 @@ def test_watch_serves_nothing_outside_the_project(project: Path, served: str):
     assert fetch(served + "/../secret.txt")[0] == 404
     assert fetch(served + "/%2e%2e/secret.txt")[0] == 404
     assert fetch(served + "/missing.wav")[0] == 404
+
+
+@needs_node
+def test_watch_serves_files_through_a_symlink_the_project_holds(project: Path, tmp_path: Path, served: str):
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    (shared / "kit.js").write_text("// shared kit")
+    (project / "assets/shared").symlink_to(shared)
+    assert fetch(served + "/assets/shared/kit.js")[:3:2] == (200, b"// shared kit")
+    assert fetch(served + "/assets/shared/../../../shared/kit.js")[0] == 404
 
 
 @needs_node

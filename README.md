@@ -213,7 +213,8 @@ lumiere bundle . -o film.html --audio copy   # keep the original audio bytes
 project's files. It writes nothing. `bundle` embeds every audio, video, and
 image file the film links. The file of an `<audio>` becomes Opus at 32 kbps
 unless `--audio copy` keeps it; every other file is copied. A link to a file
-that is missing or outside the project is refused, and nothing is written. The
+that is missing or outside the project is refused, and nothing is written. A
+link through a symlink the project holds counts as inside it, as in Studio. The
 bundler's own notes, such as a font too large to inline, go to stderr.
 
 The HyperFrames version is the project's installed `hyperframes`, else an exact
